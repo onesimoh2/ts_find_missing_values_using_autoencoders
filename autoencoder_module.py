@@ -20,57 +20,27 @@ class FeatureDatasetFromDf(Dataset):
         if len(args) == 7:
             df, scaler, fit_dat, columns_names, dateName, ser_pos, n_df = args[0], args[1], args[2], args[3], args[4], args[5], args[6]
         else:
-            df, scaler, fit_dat, columns_names, dateName, ser_pos, n_df, self.extrpl, self.x_freqdom, self.f, self.p, self.indexes, self.n_train = args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11], args[12]
+            df, scaler, fit_dat, columns_names, dateName, ser_pos, n_df = args[0], args[1], args[2], args[3], args[4], args[5], args[6]
 
         x = df 
         x = x.reset_index()
         
         self.iPos = ser_pos
         self.x_train = np.array(x[columns_names].values)
-        if(fit_dat == 'true'):
-            # create the complex coefficients and the rest of the required parameters 
-            x_in = df[columns_names].values.flatten()           
-            self.extrpl, self.x_freqdom, self.f, self.p, self.indexes, self.n_train = fourier_extrapolation(x_in, 0)
+        
+        # axFFT = plt.axes()
+        # tt = np.arange(0, len(trend))
+        # axFFT.plot(tt, np.abs(trend))
+        # axFFT.plot(tt, np.abs(restored_sig))
+        # plt.show()        
 
-
-        # use the coefficients and the rest of the parameters to calculate the nonlinear tend and the seasonality part 
-        forcastVals, restored_sig, trend = fourierPrediction(x, self.x_freqdom, self.f, self.p, self.indexes, self.n_train, columns_names)
-        
-        axFFT = plt.axes()
-        tt = np.arange(0, len(trend))
-        axFFT.plot(tt, np.abs(trend))
-        axFFT.plot(tt, np.abs(restored_sig))
-        plt.show()        
-        #nDfLast = DateUtils.calc_day(x[dateName].iloc[-1]) 
-        #nDf1 = int(round(nDfLast * 0.033115)) #int(nDf*0.066)
-        nDf1 = n_df
-        #biasRand = [xrand_position[DateUtils.calcorderFromDay(item)] for item in x[dateName]]
-        
-        
-      
-
-
-        i = 0
-                     
-        
-        #forcastValsR = np.array(forcastVals).reshape(-1, 1)
-        trend_reshape = np.array(trend).reshape(-1, 1)
-        seasonal_part = np.array(restored_sig).reshape(-1, 1)
-        
-        self.x_train = np.append(self.x_train, trend_reshape, axis=1)
-        self.x_train = np.append(self.x_train, seasonal_part, axis=1)
 
         if(fit_dat == 'true'):            
-            self.x_train[:,[0,1,2]] = scaler.fit_transform(self.x_train[:,[0,1,2]].reshape(-1, 3)).reshape(-1, 3)            
+            self.x_train[:,[0,1,2,3,4,5,6]] = scaler.fit_transform(self.x_train[:,[0,1,2,3,4,5,6]].reshape(-1, 7)).reshape(-1, 7)            
         else:
-            self.x_train[:,[0,1,2]] = scaler.transform(self.x_train[:,[0,1,2]].reshape(-1, 3)).reshape(-1, 3)               
+            #self.x_train[:,[0,1,2]] = scaler.transform(self.x_train[:,[0,1,2]].reshape(-1, 3)).reshape(-1, 3)               
+            self.x_train[:,[0,1,2,3,4,5,6]] = scaler.transform(self.x_train[:,[0,1,2,3,4,5,6]].reshape(-1, 7)).reshape(-1, 7)            
 
-        #biasAddedSeed = [((item[0]*item[0]) + (item[1]*item[1])  + (item[2]*item[2])) for item in self.x_train]
-        data_vs_trend = [np.abs(item[0]-item[1]) for item in self.x_train]
-        data_vs_trend_reshape = np.array(data_vs_trend).reshape(-1, 1)
-        self.x_train = np.append(self.x_train, data_vs_trend_reshape, axis=1)
-
-        #x_train have; data, train estimate, stationary estimate and difference between the first two 
 
         #trainn.to_csv('C:/Users/ecbey/Downloads/x_train.csv')  
         self.X_train = torch.tensor(self.x_train, dtype=torch.float32)
@@ -106,23 +76,30 @@ class autoencoder(nn.Module):
         self.number_0f_features = number_of_features
 
         #defining the structure of the autoencoder, this is a general method that should fit different structure depending on the number of input nodes 
-        self.first_encode_layer = nn.Linear(4, 3)
-        self.get_mean = nn.Linear(3, 2)
-        self.get_std = nn.Linear(3, 2)
-        self.first_decode_layer = nn.Linear(2, 3)
-        self.second_decode_layer = nn.Linear(3, 4)
+        self.first_encode_layer = nn.Linear(7, 6)
+        self.second_encode_layer = nn.Linear(6, 6)
+        self.get_mean = nn.Linear(6, 5)
+        self.get_std = nn.Linear(6, 5)
+        self.first_decode_layer = nn.Linear(5, 6)
+        self.second_decode_layer = nn.Linear(6, 6)
+        self.third_decode_layer = nn.Linear(6, 7)
         self.initialize_weights()
         self.optimizer = torch.optim.Adam(self.parameters(), lr=self.learningRate, weight_decay=self.weight_decay)     
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=5, factor=0.1, mode='min', verbose=True)
 
         
     def encoder(self, x):
-        x = F.relu(self.first_encode_layer(x))
-        return self.get_mean(x), self.get_std(x)
+        x1 = F.relu(self.first_encode_layer(x))
+        return self.get_mean(x1), self.get_std(x1)
+        #x2 = F.relu(self.second_encode_layer(x1))
+        #return self.get_mean(x2), self.get_std(x)
+        
 
     def decoder(self, z):
         h3 = F.relu(self.first_decode_layer(z))
-        return self.second_decode_layer(h3)
+        return self.third_decode_layer(h3)
+        #h4 = F.relu(self.second_decode_layer(h3))
+        #return self.third_decode_layer(h4)
             
     def reparameterize(self, mu, logvar):
         if self.training:
@@ -143,6 +120,17 @@ class autoencoder(nn.Module):
         KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
         return BCE + KLD   
+
+    def loss_function_ex(self,recon_x, x, mu, logvar):
+        #BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
+        BCE = rr = F.mse_loss(recon_x, x)
+        # see Appendix B from VAE paper:
+        # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
+        # https://arxiv.org/abs/1312.6114
+        # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
+        KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+        return BCE + KLD, BCE   
         
         #self.loss = nn.MSELoss()
 
@@ -233,7 +221,7 @@ class autoencoder(nn.Module):
 
 
 
-    def execute_evaluate(self, feature_sample, max_training_loss, index_df):
+    def execute_evaluate(self, feature_sample, max_training_loss, index_df, scaler):
         self.eval()
         indx = 0
         test_epc = 0.0
@@ -243,20 +231,22 @@ class autoencoder(nn.Module):
         with torch.no_grad(): # Run without Autograd
             for original in feature_sample:
                 recon_batch, mu, logvar = self.forward(original)  # model can't use test to learn
-                test_loss = self.loss_function(recon_batch, original, mu, logvar)
+                reconstructed_original_inverse = scaler. inverse_transform(recon_batch.reshape(1, -1))
+                original_inverse = scaler. inverse_transform(original.reshape(1, -1))
+                test_loss, bce = self.loss_function_ex(recon_batch, original, mu, logvar)
 
                 
             
-                test_epc = test_epc + test_loss
+                test_epc = test_epc + bce
                 test_num = test_num + 1
 
                 indx1 = index_df.iloc[[indx], [0]]
-                print('test_loss=', test_loss, ' Indx=', indx)
+                print('test_loss=', bce, ' Indx=', indx)
 
-                if test_loss > (1 * max_training_loss) :                    
-                    item = [test_loss, int(indx1['ID123'])]
+                if bce > (1 * max_training_loss) :                    
+                    item = [bce, int(indx1['ID123'])]
                     detected_anomalies.append(item)
-                    #print('          test_loss=', test_loss, ' Indx=', indx1['ID123'])
+                    print('          test_loss=', test_loss, ' Indx=', indx1['ID123'])
                     #pd.DataFrame(original)
                 
 
