@@ -3,7 +3,7 @@ import numpy as np
 from datetime import date, datetime
 
 
-def get_train_test_data():
+def get_train_test_data():  
     try:
         db = pd.read_csv('Data/train.csv', parse_dates=["timestamp"]) 
     except:
@@ -52,15 +52,18 @@ def get_train_test_data():
     # test['hour_cos'] = test['seconds'] / hour_sec
 
     k = 0
+    #CONSTANT = 10000.0
+    #CONSTANT = float(len(train. index)) there are missing places in the series
+    CONSTANT = 5500.00
     for index, row in train.iterrows(): 
-        row.month_sin = row.month_sin + np.sin((float(k) / (10000.0 ** (2*0/6))))
-        row.month_cos = row.month_cos + np.cos((float(k) / (10000.0 ** (2*1/6))))
+        row.month_sin = row.month_sin + np.sin((float(k) / (CONSTANT ** (2*0/6))))
+        row.month_cos = row.month_cos + np.cos((float(k) / (CONSTANT ** (2*1/6))))
 
-        row.day_sin = row.day_sin + np.sin((float(k) / (10000.0 ** (2*2/6))))
-        row.day_cos = row.day_cos + np.cos((float(k) / (10000.0 ** (2*3/6))))
+        row.day_sin = row.day_sin + np.sin((float(k) / (CONSTANT ** (2*2/6))))
+        row.day_cos = row.day_cos + np.cos((float(k) / (CONSTANT ** (2*3/6))))
 
-        row.hour_sin = row.hour_sin + np.sin((float(k) / (10000.0 ** (2*4/6))))
-        row.hour_cos = row.hour_cos + np.cos((float(k) / (10000.0 ** (2*5/6))))
+        row.hour_sin = row.hour_sin + np.sin((float(k) / (CONSTANT ** (2*4/6))))
+        row.hour_cos = row.hour_cos + np.cos((float(k) / (CONSTANT ** (2*5/6))))
 
     # for i in range(len(test)):
     #     a = test[i:'month_sin']
@@ -70,3 +73,54 @@ def get_train_test_data():
     test = test.drop('seconds', axis = 1)
     test = test.drop('timestamp', axis = 1)
     return train, test
+
+def generate_train_test_data():  
+    try:
+        db = pd.read_csv('Data/train.csv', parse_dates=["timestamp"]) 
+    except:
+        db = None
+    train = db.query('building_id == 107')
+    train = train.dropna()
+   
+    train = train.drop('building_id', axis = 1)
+    test = train.query('anomaly == 1')
+    train = train[train['anomaly'] == 0]
+    train = train.drop('anomaly', axis = 1)
+    test = test.drop('anomaly', axis = 1)
+    #train.to_csv('C:/Users/ecbey/Downloads/train_building_107.csv')  
+    # sec_origin_row = train.iloc[1:1]
+    # sec_origin_ser = sec_origin_row['timestamp']
+    #print(train.columns.tolist())
+    train_sec_origin = train.iloc[0]['timestamp'].timestamp()
+    test_sec_origin = test.iloc[0]['timestamp'].timestamp()
+    train['seconds'] = train['timestamp'].map(lambda t: t.timestamp() - train_sec_origin )
+    test['seconds'] = test['timestamp'].map(lambda t: t.timestamp() - test_sec_origin )
+    hour_sec = 60 * 60
+    day_sec = 24 * hour_sec
+    month_sec = 30.4167 * day_sec
+    
+
+############ GENERATING DERIVED DATE FIELDS ###########################
+#MONTH
+    train['year_quarter_1'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).month >= 1 and (datetime.fromtimestamp(t.timestamp())).month < 4 else 0 )
+    train['year_quarter_2'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).month > 3 and (datetime.fromtimestamp(t.timestamp())).month < 7 else 0 )
+    train['year_quarter_3'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).month > 6 and (datetime.fromtimestamp(t.timestamp())).month < 10 else 0 )
+    train['year_quarter_4'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).month > 9 and (datetime.fromtimestamp(t.timestamp())).month <= 12 else 0 )
+
+#DAY
+    train['day_holliday'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).isoweekday() == 6 or (datetime.fromtimestamp(t.timestamp())).isoweekday() == 6 else 0 )
+
+#HOUR
+    train['day_midnight'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).hour >= 0 and (datetime.fromtimestamp(t.timestamp())).month < 7 else 0 )
+    train['day_morning'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).hour > 6 and (datetime.fromtimestamp(t.timestamp())).month <= 12 else 0 )
+    train['day_afternoon'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).hour > 12 and (datetime.fromtimestamp(t.timestamp())).month <= 18 else 0 )
+    train['day_night'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).hour > 18 and (datetime.fromtimestamp(t.timestamp())).month <= 23 else 0 )
+
+
+
+    train = train.drop('seconds', axis = 1)
+    train = train.drop('timestamp', axis = 1)
+    test = test.drop('seconds', axis = 1)
+    test = test.drop('timestamp', axis = 1)
+    return train, test
+    

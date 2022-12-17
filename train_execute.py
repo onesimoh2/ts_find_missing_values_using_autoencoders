@@ -45,20 +45,32 @@ def train_test(train, test) :
     #     i += 1
     # ax1.plot(epoch1, train_ave)
     # plt.show()
+
+
+  
 ################### EXECUTE ####################################
 
-    index_df = pd.DataFrame()
-    n_df = len(test)
-    anomaly_file_ds = FeatureDatasetFromDf(test, scaler, 'false', COLUMN_NAMES, DATE_COLUMN_NAME, 1, n_df)
-    index_df.insert(0,'ID123',test.index)  
+    # index_df = pd.DataFrame()
+    # n_df = len(test)
+    # anomaly_file_ds = FeatureDatasetFromDf(test, scaler, 'false', COLUMN_NAMES, DATE_COLUMN_NAME, 1, n_df)
+    # index_df.insert(0,'ID123',test.index)  
 
 
-    # n_df = len(train)
-    # #anomaly_file_ds = FeatureDatasetFromDf(train, scaler, 'true', COLUMN_NAMES, DATE_COLUMN_NAME, 1, n_df)
-    # anomaly_file_ds = train_split 
-    # index_df.insert(0,'ID123',train.index)  
+    # # n_df = len(train)
+    # # #anomaly_file_ds = FeatureDatasetFromDf(train, scaler, 'true', COLUMN_NAMES, DATE_COLUMN_NAME, 1, n_df)
+    # # anomaly_file_ds = train_split 
+    # # index_df.insert(0,'ID123',train.index)  
     
 
 
-    model.eval()
-    detected_anomalies1, pcent_anomalies_detected1, test_loss1 = model.execute_evaluate(anomaly_file_ds, max_training_loss, index_df, scaler)
+    # model.eval()
+    # detected_anomalies1, pcent_anomalies_detected1, test_loss1 = model.execute_evaluate(anomaly_file_ds, max_training_loss, index_df, scaler)
+################ END EXECUTE ################################
+
+######################## FIND MISSING POINTS ###################
+    
+    for index, row in train.iterrows(): 
+        row_next = train.iloc[index+1,:]
+        date1 = row['timestamp']
+        date2 = row_next['timestamp']
+######################## END MISSING POINTS ####################   

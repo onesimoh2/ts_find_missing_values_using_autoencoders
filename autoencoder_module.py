@@ -258,3 +258,14 @@ class autoencoder(nn.Module):
         #print(f'     Validate_loss: {test_loss:.4f}')
         return detected_anomalies, pcent_anomalies_detected, test_loss
 
+    def get_mean_std_for_2_points(self, pont1, point2):
+        mean1, std1 = self.encoder(pont1)
+        mean2, std2 = self.encoder(point2)
+        return mean1, std1, mean2, std2
+
+    def get_num_of_places_from_one_date_to_other(date1, date2, steap_type):
+        if steap_type == 'hours':
+            difsec = date2.timestamp() - date1.timestamp()
+            return difsec
+        else:
+            return 0
