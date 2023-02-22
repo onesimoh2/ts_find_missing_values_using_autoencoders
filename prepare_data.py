@@ -81,7 +81,10 @@ def generate_train_test_data():
         db = None
     train = db.query('building_id == 107')
     train = train.dropna()
-   
+    sample_sec_origin = train.iloc[0]['timestamp'].timestamp()
+    
+    train['time_sec'] = train['timestamp'].map(lambda t: (t.timestamp() - sample_sec_origin) / 3600 )
+    sample_time_sec_end = train.iloc[-1]['time_sec']
     train = train.drop('building_id', axis = 1)
     test = train.query('anomaly == 1')
     train = train[train['anomaly'] == 0]
@@ -91,10 +94,11 @@ def generate_train_test_data():
     # sec_origin_row = train.iloc[1:1]
     # sec_origin_ser = sec_origin_row['timestamp']
     #print(train.columns.tolist())
-    train_sec_origin = train.iloc[0]['timestamp'].timestamp()
-    test_sec_origin = test.iloc[0]['timestamp'].timestamp()
-    train['seconds'] = train['timestamp'].map(lambda t: t.timestamp() - train_sec_origin )
-    test['seconds'] = test['timestamp'].map(lambda t: t.timestamp() - test_sec_origin )
+
+    #train_sec_origin = train.iloc[0]['timestamp'].timestamp()
+    #test_sec_origin = test.iloc[0]['timestamp'].timestamp()
+    #train['time_sec'] = train['timestamp'].map(lambda t: (t.timestamp() - sample_sec_origin) / 3600 )
+    #test['time_sec'] = test['timestamp'].map(lambda t: (t.timestamp() - sample_sec_origin ) / 3600)
     hour_sec = 60 * 60
     day_sec = 24 * hour_sec
     month_sec = 30.4167 * day_sec
@@ -102,25 +106,49 @@ def generate_train_test_data():
 
 ############ GENERATING DERIVED DATE FIELDS ###########################
 #MONTH
-    train['year_quarter_1'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).month >= 1 and (datetime.fromtimestamp(t.timestamp())).month < 4 else 0 )
-    train['year_quarter_2'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).month > 3 and (datetime.fromtimestamp(t.timestamp())).month < 7 else 0 )
-    train['year_quarter_3'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).month > 6 and (datetime.fromtimestamp(t.timestamp())).month < 10 else 0 )
-    train['year_quarter_4'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).month > 9 and (datetime.fromtimestamp(t.timestamp())).month <= 12 else 0 )
+    train['year_quarter_1'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).month >= 1 and (datetime.fromtimestamp(t.timestamp())).month < 4 else 0.0001 )
+    train['year_quarter_2'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).month > 3 and (datetime.fromtimestamp(t.timestamp())).month < 7 else 0.0001 )
+    train['year_quarter_3'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).month > 6 and (datetime.fromtimestamp(t.timestamp())).month < 10 else 0.0001 )
+    train['year_quarter_4'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).month > 9 and (datetime.fromtimestamp(t.timestamp())).month <= 12 else 0.0001 )
 
 #DAY
-    train['day_holliday'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).isoweekday() == 6 or (datetime.fromtimestamp(t.timestamp())).isoweekday() == 6 else 0 )
+    train['day_holliday'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).isoweekday() == 6 or (datetime.fromtimestamp(t.timestamp())).isoweekday() == 6 else 0.0001 )
 
 #HOUR
-    train['day_midnight'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).hour >= 0 and (datetime.fromtimestamp(t.timestamp())).month < 7 else 0 )
-    train['day_morning'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).hour > 6 and (datetime.fromtimestamp(t.timestamp())).month <= 12 else 0 )
-    train['day_afternoon'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).hour > 12 and (datetime.fromtimestamp(t.timestamp())).month <= 18 else 0 )
-    train['day_night'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).hour > 18 and (datetime.fromtimestamp(t.timestamp())).month <= 23 else 0 )
+    train['day_midnight'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).hour >= 0 and (datetime.fromtimestamp(t.timestamp())).hour < 7 else 0.0001 )
+    train['day_morning'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).hour > 6 and (datetime.fromtimestamp(t.timestamp())).hour <= 12 else 0.0001 )
+    train['day_afternoon'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).hour > 12 and (datetime.fromtimestamp(t.timestamp())).hour <= 18 else 0.0001 )
+    train['day_night'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).hour > 18 and (datetime.fromtimestamp(t.timestamp())).hour <= 23 else 0.0001 )
 
+#  output = output_start + ((output_end - output_start) / (input_end - input_start)) * (input - input_start)
+#  output_end = 1.3 output_start = 0.2   1.1
+#  output = 0.2 + (1.1 / (input_end - input_start)) * (input - input_start)
+#  TRANSF:  e^x^3  ==> e^(output^3)
+    
+    output_end = 1.3
+    output_start = 0.2 
+    for index, row in train.iterrows():     
+        output = output_start + ((output_end -output_start ) / (sample_time_sec_end - 0.0001)) * (float(row['time_sec']) - 0.0001)
+        out_inv = output_end - (output -output_start)  
+        tranf = np.e ** (float(-out_inv)**3)
+        train.loc[index,'year_quarter_1'] = row.year_quarter_1 * tranf
+        train.loc[index,'year_quarter_2'] = row.year_quarter_2 * tranf
+        train.loc[index,'year_quarter_3'] = row.year_quarter_3 * tranf
+        train.loc[index,'year_quarter_4'] = row.year_quarter_4 * tranf
+        train.loc[index,'day_holliday'] = row.day_holliday  * tranf
+        train.loc[index,'day_midnight'] = row.day_midnight  * tranf
+        train.loc[index,'day_morning'] = row.day_morning  * tranf
+        train.loc[index,'day_afternoon'] = row.day_afternoon  * tranf
+        train.loc[index,'day_night'] = row.day_night  * tranf
 
+ 
+    #train.to_csv('C:/Users/ecbey/Downloads/train_building_107.csv')  
 
-    train = train.drop('seconds', axis = 1)
+    #train = train.drop('seconds', axis = 1)
     train = train.drop('timestamp', axis = 1)
-    test = test.drop('seconds', axis = 1)
+    #train.to_csv('C:/Users/ecbey/Downloads/train_building_107.csv') 
+    #test = test.drop('seconds', axis = 1)
     test = test.drop('timestamp', axis = 1)
+
     return train, test
     

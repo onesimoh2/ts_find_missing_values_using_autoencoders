@@ -14,28 +14,30 @@ from torch.utils.data import DataLoader, Subset
 
 def train_test(train, test) :
     MAX_TRAINING_LOSS_VAR =  3.0 #number of sigmas from the mean to consider a value is an anomaly
-    LAYER_REDUCTION_FACTOR = 1.6 #how much each layer of the autoencoder decreases 
-    #LAYER_REDUCTION_FACTOR = 1.2 #how much each layer of the autoencoder decreases 
+    LAYER_REDUCTION_FACTOR = 1.5 #reduce half of the input variables in the latent space 
     BATCH_SIZE = int(len(train)/100) 
-    COLUMN_NAMES = ['meter_reading', 'month_sin', 'month_cos', 'day_sin', 'day_cos', 'hour_sin', 'hour_cos']
+    #COLUMN_NAMES = ['meter_reading', 'month_sin', 'month_cos', 'day_sin', 'day_cos', 'hour_sin', 'hour_cos']
+    COLUMN_NAMES = ['meter_reading','year_quarter_1','year_quarter_2','year_quarter_3','year_quarter_4','day_holliday',	'day_midnight',	'day_morning','day_afternoon', 'day_night']
+    PREDICTED_COLUMNS = ['meter_reading']
     DATE_COLUMN_NAME = ''
         # defining the random seed
     seed = int(median(list(train['meter_reading'])))      
     np.random.seed(seed)
     scaler = MinMaxScaler()
     n_df = len(train)
-    train_split = FeatureDatasetFromDf(train, scaler, 'true', COLUMN_NAMES, DATE_COLUMN_NAME, 1, n_df)
+    train_split = FeatureDatasetFromDf(train, scaler, 'true', COLUMN_NAMES, DATE_COLUMN_NAME, PREDICTED_COLUMNS, 1, n_df)
    
 
     
     # create the data loader for testing
-    data_loader = DataLoader(train_split, batch_size=BATCH_SIZE, shuffle=False)
-
+    data_loader = DataLoader(train_split, batch_size=BATCH_SIZE, shuffle=True)
     number_of_features = int(train_split.X_train.size(dim=1))
     # create the model for the autoencoder
 
-    model = autoencoder(epochs = 500, batchSize = BATCH_SIZE, number_of_features = number_of_features, layer_reduction_factor = LAYER_REDUCTION_FACTOR,  seed = seed)
+    model = autoencoder(epochs = 100, batchSize = BATCH_SIZE, number_of_features = number_of_features, layer_reduction_factor = LAYER_REDUCTION_FACTOR,  seed = seed)
+    #max_training_loss, train_ave = model.train_only_with_denoising_prediction(data_loader, MAX_TRAINING_LOSS_VAR,BATCH_SIZE)
     max_training_loss, train_ave = model.train_only(data_loader, MAX_TRAINING_LOSS_VAR)
+    max_training_loss, train_ave = model.train_only_with_denoising_prediction(data_loader, MAX_TRAINING_LOSS_VAR,BATCH_SIZE)
     # fig1 = plt.figure()
     # ax1 = plt.axes()
     # epoch1 = []

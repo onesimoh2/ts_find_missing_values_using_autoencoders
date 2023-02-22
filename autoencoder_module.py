@@ -18,9 +18,9 @@ class FeatureDatasetFromDf(Dataset):
 
     def __init__(self, *args):
         if len(args) == 7:
-            df, scaler, fit_dat, columns_names, dateName, ser_pos, n_df = args[0], args[1], args[2], args[3], args[4], args[5], args[6]
+            df, scaler, fit_dat, columns_names, dateName, pred_columns, ser_pos, n_df = args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]
         else:
-            df, scaler, fit_dat, columns_names, dateName, ser_pos, n_df = args[0], args[1], args[2], args[3], args[4], args[5], args[6]
+            df, scaler, fit_dat, columns_names, dateName, pred_columns, ser_pos, n_df = args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]
 
         x = df 
         x = x.reset_index()
@@ -32,14 +32,18 @@ class FeatureDatasetFromDf(Dataset):
         # tt = np.arange(0, len(trend))
         # axFFT.plot(tt, np.abs(trend))
         # axFFT.plot(tt, np.abs(restored_sig))
-        # plt.show()        
-
+        # plt.show()  
+              
+        #all_columns_list = list(x.columns.values)
+        #column_numbers = [all_columns_list.index(element) for element in columns_names if element in columns_names]
+        column_numbers = list(range(len(pred_columns)))
+        num_of_columns = len(pred_columns)
 
         if(fit_dat == 'true'):            
-            self.x_train[:,[0,1,2,3,4,5,6]] = scaler.fit_transform(self.x_train[:,[0,1,2,3,4,5,6]].reshape(-1, 7)).reshape(-1, 7)            
+            self.x_train[:,column_numbers] = scaler.fit_transform(self.x_train[:,column_numbers].reshape(-1, num_of_columns)).reshape(-1, num_of_columns)            
         else:
-            #self.x_train[:,[0,1,2]] = scaler.transform(self.x_train[:,[0,1,2]].reshape(-1, 3)).reshape(-1, 3)               
-            self.x_train[:,[0,1,2,3,4,5,6]] = scaler.transform(self.x_train[:,[0,1,2,3,4,5,6]].reshape(-1, 7)).reshape(-1, 7)            
+            self.x_train[:,column_numbers] = scaler.transform(self.x_train[:,column_numbers].reshape(-1, num_of_columns)).reshape(-1, num_of_columns)            
+
 
 
         #trainn.to_csv('C:/Users/ecbey/Downloads/x_train.csv')  
@@ -62,9 +66,25 @@ class autoencoder(nn.Module):
                 nn.init.kaiming_uniform_(n.weight)
                 nn.init.constant_(n.bias, 0)
 
+    def halving_numbers(self,m, n):
+        numbers = []
+        while m > n:
+            numbers.append(m)
+            m = int(m - (m - n) / 2)
+        numbers.append(m)
+        return numbers
 
-    def __init__(self, epochs=15, batchSize=10, learningRate=1e-3, weight_decay=1e-5, layer_reduction_factor = 1.6, number_of_features = 29, seed=15000):
+    def __init__(self, epochs=15, batchSize=10, learningRate=1e-3, weight_decay=1e-5, layer_reduction_factor = 2, number_of_features = 29, seed=15000):
         super(autoencoder, self).__init__()
+
+        bottleneck_node_number = int(number_of_features / layer_reduction_factor)
+        numbers_in_layers = self.halving_numbers(number_of_features, bottleneck_node_number) 
+        numbers_in_layers = [10,10,9,9,8,8,7,7,6,6] #0.0219
+        
+        result_pairs = list(zip(numbers_in_layers, numbers_in_layers[1:]))
+        reverse_numbers_in_layers = list(reversed(numbers_in_layers))
+        reversed_pairs = list(zip(reverse_numbers_in_layers, reverse_numbers_in_layers[1:]))
+
         #seed = 15000
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -76,31 +96,70 @@ class autoencoder(nn.Module):
         self.number_0f_features = number_of_features
 
         #defining the structure of the autoencoder, this is a general method that should fit different structure depending on the number of input nodes 
-        self.first_encode_layer = nn.Linear(7, 6)
-        self.second_encode_layer = nn.Linear(6, 6)
-        self.get_mean = nn.Linear(6, 5)
-        self.get_std = nn.Linear(6, 5)
-        self.first_decode_layer = nn.Linear(5, 6)
-        self.second_decode_layer = nn.Linear(6, 6)
-        self.third_decode_layer = nn.Linear(6, 7)
+        self.ecoder_layers = nn.ModuleList()
+        from_nodes = 0
+        to_nodes = 0
+        #for from_nodes, to_nodes in result_pairs for variational autoencoders:
+        # for i, pairs in enumerate(result_pairs): 
+        #     from_nodes = pairs[0]
+        #     to_nodes = pairs[1]       
+        #     if i == len(result_pairs) - 1: 
+        #         break
+        #     linear_layer = nn.Linear(from_nodes, to_nodes)
+        #     self.ecoder_layers.append(linear_layer)
+        # self.get_mean = nn.Linear(from_nodes, to_nodes)
+        # self.get_std = nn.Linear(from_nodes, to_nodes)
+
+        #for regular autoencoders
+        for i, pairs in enumerate(result_pairs): 
+            from_nodes = pairs[0]
+            to_nodes = pairs[1]       
+            linear_layer = nn.Linear(from_nodes, to_nodes)
+            self.ecoder_layers.append(linear_layer)
+        
+        self.decoder_layers = nn.ModuleList()
+        for from_nodes, to_nodes in reversed_pairs:            
+            linear_layer = nn.Linear(from_nodes, to_nodes)
+            self.decoder_layers.append(linear_layer)
+
+            
+
+        # self.first_encode_layer = nn.Linear(7, 6)
+        # self.second_encode_layer = nn.Linear(6, 6)
+        # self.get_mean = nn.Linear(6, 5)
+        # self.get_std = nn.Linear(6, 5)
+        # self.first_decode_layer = nn.Linear(5, 6)
+        # self.second_decode_layer = nn.Linear(6, 6)
+        # self.third_decode_layer = nn.Linear(6, 7)
         self.initialize_weights()
         self.optimizer = torch.optim.Adam(self.parameters(), lr=self.learningRate, weight_decay=self.weight_decay)     
-        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=5, factor=0.1, mode='min', verbose=True)
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=5, factor=0.05, mode='min', verbose=True)
 
-        
-    def encoder(self, x):
-        x1 = F.relu(self.first_encode_layer(x))
-        return self.get_mean(x1), self.get_std(x1)
-        #x2 = F.relu(self.second_encode_layer(x1))
-        #return self.get_mean(x2), self.get_std(x)
-        
+    #variational autoencoder encoder
+    # def encoder(self, z):   
+    #     for i, layer in enumerate(self.ecoder_layers):
+    #         #if i == len(self.ecoder_layers) - 1:
+    #         #    return self.get_mean(z), self.get_std(z)
+    #         x = F.relu(layer(z))
+    #         z = x
+    #     return self.get_mean(z), self.get_std(z)
 
-    def decoder(self, z):
-        h3 = F.relu(self.first_decode_layer(z))
-        return self.third_decode_layer(h3)
-        #h4 = F.relu(self.second_decode_layer(h3))
-        #return self.third_decode_layer(h4)
+    def encoder(self, z):   
+        for i, layer in enumerate(self.ecoder_layers):
+            x = F.relu(layer(z))
+            z = x
+        return z
+
             
+    def decoder(self, z):
+        for i, layer in enumerate(self.decoder_layers):
+            x = F.relu(layer(z))
+            z = x    
+        return z       
+
+
+         
+
     def reparameterize(self, mu, logvar):
         if self.training:
             std = torch.exp(0.5*logvar)
@@ -109,10 +168,14 @@ class autoencoder(nn.Module):
         else:
             return mu
         
-         # Reconstruction + KL divergence losses summed over all elements and batch
+    # Reconstruction + KL divergence losses summed over all elements and batch
     def loss_function(self,recon_x, x, mu, logvar):
         #BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
         BCE = rr = F.mse_loss(recon_x, x)
+        # min_val = torch.min(recon_x)
+        # max_val = torch.max(recon_x)
+        # BCE = F.binary_cross_entropy(recon_x, x, reduction='none') 
+        # BCE = BCE.sum(dim=1).mean() 
         # see Appendix B from VAE paper:
         # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
         # https://arxiv.org/abs/1312.6114
@@ -120,6 +183,8 @@ class autoencoder(nn.Module):
         KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
         return BCE + KLD   
+
+
 
     def loss_function_ex(self,recon_x, x, mu, logvar):
         #BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
@@ -157,17 +222,89 @@ class autoencoder(nn.Module):
 
         return BCE + KLD, last_epoch_individual_loss   
     
+    #variational autoencoder forward
+    # def forwardvar(self, x):
+    #     mu, logvar = self.encoder(x)
+    #     z = self.reparameterize(mu, logvar)
+    #     return self.decoder(z), mu, logvar
+
+    #regular autoencoder forward
     def forward(self, x):
-        mu, logvar = self.encoder(x)
-        z = self.reparameterize(mu, logvar)
-        return self.decoder(z), mu, logvar
+        z = self.encoder(x)
+        return self.decoder(z)
 
 
-    def train_only(self, train_sample, max_training_loss_var_num):                               
+    # def train_only_with_denoising_prediction(self, train_sample, max_training_loss_var_num):                               
+    #     train_ave = []
+    #     last_epoch_loss = []
+    #     last_epoch_individual_loss_all = []
+    #     max_training_loss = 0
+    #     #criterion_no_reduced = nn.MSELoss(reduction = 'none')
+
+    #     for epoch in range(self.epochs):
+    #         self.train() 
+    #         train_epc = 0.0
+    #         train_num = 0.0
+    #         for data in train_sample:
+    #             data_without_change =  data.clone()
+    #             #predict
+    #             #data = data_subset[:10]
+    #             #data = np.delete(data, 0, axis=1)
+    #             #data = np.insert(data, 0, random_numbers, axis=1)
+    #             random_numbers_for_batch = np.random.random(data.size(0))
+    #             data[:,0] = torch.from_numpy(random_numbers_for_batch)
+    #             recon_batch, mu, logvar =  self.forward(data)
+    #             #output = self(data)
+    #             # find loss
+
+    #             loss = self.loss_function(recon_batch, data_without_change, mu, logvar)
+    #             # if epoch + 1 == self.epochs:
+    #             #     loss, last_epoch_individual_loss = self.loss_function_reduction_none(recon_batch, data, mu, logvar)
+    #             #     last_epoch_individual_loss_all.extend(last_epoch_individual_loss)
+    #             # else:
+    #             #     loss = self.loss_function(recon_batch, data, mu, logvar)
+                
+    #             lossTrainData = loss.data.item() 
+    #             train_epc = train_epc + lossTrainData
+    #             train_num =  train_num + 1
+    #             # perform back propagation
+    #             self.optimizer.zero_grad()
+    #             loss.backward()
+    #             self.optimizer.step()
+
+    #         loss_train_data = loss.data.item() 
+    #         #average of the losses for a given epoch
+    #         epoc_t_ave = train_epc/train_num
+    #         #add all losses in an array
+    #         train_ave.append(float(epoc_t_ave))
+            
+    #         print(f'******epoch {epoch + 1}, loss: {train_ave[epoch]:.4f}')
+            
+    #         #supply the current loss for the scheduler
+    #         min_loss_round = round(train_ave[epoch], 4)
+    #         self.scheduler.step(min_loss_round)
+    #         #accumulae the losses for each element
+    #         train_epc = train_epc + loss_train_data
+    #         train_num =  train_num + 1
+             
+
+    #         #supply the current loss for the scheduler
+    #         min_loss_round = round(train_ave[epoch], 4)
+    #         self.scheduler.step(min_loss_round)
+       
+
+    #     #calculate the theashold to detect anomalies
+    #     mean, var, sig = variance(last_epoch_individual_loss_all)
+    #     max_training_loss = mean +  (max_training_loss_var_num * sig)
+    #     return max_training_loss, train_ave
+
+    def train_only_with_denoising_prediction(self, train_sample, max_training_loss_var_num, batch_size):                               
         train_ave = []
         last_epoch_loss = []
         last_epoch_individual_loss_all = []
         max_training_loss = 0
+        
+        random_numbers_batchSize = np.random.random(batch_size)
         #criterion_no_reduced = nn.MSELoss(reduction = 'none')
 
         for epoch in range(self.epochs):
@@ -175,15 +312,17 @@ class autoencoder(nn.Module):
             train_epc = 0.0
             train_num = 0.0
             for data in train_sample:
-                #predict
-                recon_batch, mu, logvar =  self.forward(data)
-                #output = self(data)
-                # find loss
-                if epoch + 1 == self.epochs:
-                    loss, last_epoch_individual_loss = self.loss_function_reduction_none(recon_batch, data, mu, logvar)
-                    last_epoch_individual_loss_all.extend(last_epoch_individual_loss)
-                else:
-                    loss = self.loss_function(recon_batch, data, mu, logvar)
+                data_without_change =  data.clone()
+                random_numbers_for_batch = random_numbers_batchSize[0:data.size(0)]
+                data[:,0] = torch.from_numpy(random_numbers_for_batch)
+                recon_batch =  self.forward(data)
+                loss = F.mse_loss(recon_batch, data_without_change)
+            
+                # if epoch + 1 == self.epochs:
+                #     loss, last_epoch_individual_loss = self.loss_function_reduction_none(recon_batch, data, mu, logvar)
+                #     last_epoch_individual_loss_all.extend(last_epoch_individual_loss)
+                # else:
+                #     loss = self.loss_function(recon_batch, data, mu, logvar)
                 
                 lossTrainData = loss.data.item() 
                 train_epc = train_epc + lossTrainData
@@ -210,15 +349,80 @@ class autoencoder(nn.Module):
              
 
             #supply the current loss for the scheduler
-            # min_loss_round = round(train_ave[epoch], 4)
-            # self.scheduler.step(min_loss_round)
+            min_loss_round = round(train_ave[epoch], 4)
+            self.scheduler.step(min_loss_round)
        
 
         #calculate the theashold to detect anomalies
-        mean, var, sig = variance(last_epoch_individual_loss_all)
-        max_training_loss = mean +  (max_training_loss_var_num * sig)
+        # mean, var, sig = variance(last_epoch_individual_loss_all)
+        # max_training_loss = mean +  (max_training_loss_var_num * sig)
+        max_training_loss = 0
+        train_ave = 0
         return max_training_loss, train_ave
 
+
+    def train_only(self, train_sample, max_training_loss_var_num):                               
+        train_ave = []
+        last_epoch_loss = []
+        last_epoch_individual_loss_all = []
+        max_training_loss = 0
+        #criterion_no_reduced = nn.MSELoss(reduction = 'none')
+
+        for epoch in range(self.epochs):
+            self.train() 
+            train_epc = 0.0
+            train_num = 0.0
+            for data in train_sample:
+                #predict
+                #data = data_subset[:10]
+                recon_batch =  self.forward(data)
+                #output = self(data)
+                # find loss
+                loss = rr = F.mse_loss(recon_batch, data)
+                #loss function for a variational autoencoder
+                #loss = self.loss_function(recon_batch, data, mu, logvar)
+
+                # if epoch + 1 == self.epochs:
+                #     loss, last_epoch_individual_loss = self.loss_function_reduction_none(recon_batch, data, mu, logvar)
+                #     last_epoch_individual_loss_all.extend(last_epoch_individual_loss)
+                # else:
+                #     loss = self.loss_function(recon_batch, data, mu, logvar)
+                
+                lossTrainData = loss.data.item() 
+                train_epc = train_epc + lossTrainData
+                train_num =  train_num + 1
+                # perform back propagation
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
+
+            loss_train_data = loss.data.item() 
+            #average of the losses for a given epoch
+            epoc_t_ave = train_epc/train_num
+            #add all losses in an array
+            train_ave.append(float(epoc_t_ave))
+            
+            print(f'******epoch {epoch + 1}, loss: {train_ave[epoch]:.4f}')
+            
+            #supply the current loss for the scheduler
+            min_loss_round = round(train_ave[epoch], 4)
+            self.scheduler.step(min_loss_round)
+            #accumulae the losses for each element
+            train_epc = train_epc + loss_train_data
+            train_num =  train_num + 1
+             
+
+            #supply the current loss for the scheduler
+            min_loss_round = round(train_ave[epoch], 4)
+            self.scheduler.step(min_loss_round)
+       
+
+        #calculate the theashold to detect anomalies
+        # mean, var, sig = variance(last_epoch_individual_loss_all)
+        # max_training_loss = mean +  (max_training_loss_var_num * sig)
+        max_training_loss = 0
+        train_ave = 0
+        return max_training_loss, train_ave
 
 
     def execute_evaluate(self, feature_sample, max_training_loss, index_df, scaler):
