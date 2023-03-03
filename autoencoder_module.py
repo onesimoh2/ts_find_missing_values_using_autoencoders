@@ -306,18 +306,26 @@ class autoencoder(nn.Module):
         
         random_numbers_batchSize = np.random.random(batch_size)
         #criterion_no_reduced = nn.MSELoss(reduction = 'none')
-
+        
         for epoch in range(self.epochs):
             self.train() 
             train_epc = 0.0
             train_num = 0.0
-            for data in train_sample:
-                data_without_change =  data.clone()
-                random_numbers_for_batch = random_numbers_batchSize[0:data.size(0)]
-                data[:,0] = torch.from_numpy(random_numbers_for_batch)
-                recon_batch =  self.forward(data)
-                loss = F.mse_loss(recon_batch, data_without_change)
-            
+            for data_ave in train_sample:
+                data  = data_ave[:, 0: 10]
+                data_transf = data.clone()
+                data_transf[:,0] = data_ave[:,10] #put the average in th# pred val
+                recon_batch =  self.forward(data_transf)
+
+                #new_tensor = torch.cat((data_without_change[:,0], data[:,0], recon_batch[:,0]), dim=0)
+                # A = data_without_change[:,0].reshape(data.size(0),1)
+                # B = data[:,0].reshape(data.size(0),1)
+                # C = recon_batch[:,0].reshape(data.size(0),1)
+                # tens = torch.cat((A,B , C), 1)
+                loss = F.mse_loss(recon_batch, data)
+
+
+                #loss = F.mse_loss(C, A)
                 # if epoch + 1 == self.epochs:
                 #     loss, last_epoch_individual_loss = self.loss_function_reduction_none(recon_batch, data, mu, logvar)
                 #     last_epoch_individual_loss_all.extend(last_epoch_individual_loss)
@@ -327,6 +335,7 @@ class autoencoder(nn.Module):
                 lossTrainData = loss.data.item() 
                 train_epc = train_epc + lossTrainData
                 train_num =  train_num + 1
+
                 # perform back propagation
                 self.optimizer.zero_grad()
                 loss.backward()
@@ -395,6 +404,10 @@ class autoencoder(nn.Module):
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
+                
+                B = data[:,0].reshape(data.size(0),1)
+                C = recon_batch[:,0].reshape(data.size(0),1)
+                tens = torch.cat((B , C), 1)
 
             loss_train_data = loss.data.item() 
             #average of the losses for a given epoch
@@ -425,42 +438,52 @@ class autoencoder(nn.Module):
         return max_training_loss, train_ave
 
 
-    def execute_evaluate(self, feature_sample, max_training_loss, index_df, scaler):
+    def execute_evaluate(self, feature_sample, test_sample, max_training_loss, index_df, scaler):
         self.eval()
         indx = 0
         test_epc = 0.0
         test_num = 0.0
         detected_anomalies = []
-        
+        compare_vals = []
+        i = 0
+
         with torch.no_grad(): # Run without Autograd
             for original in feature_sample:
-                recon_batch, mu, logvar = self.forward(original)  # model can't use test to learn
-                reconstructed_original_inverse = scaler. inverse_transform(recon_batch.reshape(1, -1))
-                original_inverse = scaler. inverse_transform(original.reshape(1, -1))
-                test_loss, bce = self.loss_function_ex(recon_batch, original, mu, logvar)
-
+                
+                recon_batch = self.forward(original)  # model can't use test to learn
+                reconstructed_original_inverse = scaler.inverse_transform(recon_batch[0].reshape(1, 1)).reshape(-1)
+                original_inverse = scaler.inverse_transform(original[0].reshape(1, 1)).reshape(-1)
+                #test_loss, bce = self.loss_function_ex(recon_batch, original, mu, logvar)
+                a = np.asscalar(reconstructed_original_inverse)
+                #a = np.asscalar(recon_batch[0])
+                b = np.asscalar(original_inverse)
+                #b = test_sample.iloc[i, 0]
+                i = i + 1
+                new_cols = [b, a]
+                compare_vals.append(new_cols)
+                
                 
             
-                test_epc = test_epc + bce
-                test_num = test_num + 1
+        #         test_epc = test_epc + bce
+        #         test_num = test_num + 1
 
-                indx1 = index_df.iloc[[indx], [0]]
-                print('test_loss=', bce, ' Indx=', indx)
+        #         indx1 = index_df.iloc[[indx], [0]]
+        #         print('test_loss=', bce, ' Indx=', indx)
 
-                if bce > (1 * max_training_loss) :                    
-                    item = [bce, int(indx1['ID123'])]
-                    detected_anomalies.append(item)
-                    print('          test_loss=', test_loss, ' Indx=', indx1['ID123'])
-                    #pd.DataFrame(original)
+        #         if bce > (1 * max_training_loss) :                    
+        #             item = [bce, int(indx1['ID123'])]
+        #             detected_anomalies.append(item)
+        #             print('          test_loss=', test_loss, ' Indx=', indx1['ID123'])
+        #             #pd.DataFrame(original)
                 
 
-                indx = indx + 1
+        #         indx = indx + 1
     
-        print('max_training_loss=', max_training_loss )
-        test_loss = (test_epc/test_num)
-        pcent_anomalies_detected = (len(detected_anomalies) / len(feature_sample)) * 100
-        #print(f'     Validate_loss: {test_loss:.4f}')
-        return detected_anomalies, pcent_anomalies_detected, test_loss
+        # print('max_training_loss=', max_training_loss )
+        # test_loss = (test_epc/test_num)
+        # pcent_anomalies_detected = (len(detected_anomalies) / len(feature_sample)) * 100
+        # #print(f'     Validate_loss: {test_loss:.4f}')
+        return compare_vals  #, pcent_anomalies_detected, test_loss
 
     def get_mean_std_for_2_points(self, pont1, point2):
         mean1, std1 = self.encoder(pont1)

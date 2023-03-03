@@ -12,18 +12,18 @@ def get_train_test_data():
     train = train.dropna()
    # del train['building_id']
     train = train.drop('building_id', axis = 1)
-    test = train.query('anomaly == 1')
+    anomalies = train.query('anomaly == 1')
     train = train[train['anomaly'] == 0]
     train = train.drop('anomaly', axis = 1)
-    test = test.drop('anomaly', axis = 1)
+    anomalies = anomalies.drop('anomaly', axis = 1)
     #train.to_csv('C:/Users/ecbey/Downloads/train_building_107.csv')  
     # sec_origin_row = train.iloc[1:1]
     # sec_origin_ser = sec_origin_row['timestamp']
     #print(train.columns.tolist())
     train_sec_origin = train.iloc[0]['timestamp'].timestamp()
-    test_sec_origin = test.iloc[0]['timestamp'].timestamp()
+    anomalies_sec_origin = anomalies.iloc[0]['timestamp'].timestamp()
     train['seconds'] = train['timestamp'].map(lambda t: t.timestamp() - train_sec_origin )
-    test['seconds'] = test['timestamp'].map(lambda t: t.timestamp() - test_sec_origin )
+    anomalies['seconds'] = anomalies['timestamp'].map(lambda t: t.timestamp() - anomalies_sec_origin )
     hour_sec = 60 * 60
     day_sec = 24 * hour_sec
     month_sec = 30.4167 * day_sec
@@ -37,12 +37,12 @@ def get_train_test_data():
     train['hour_sin'] = np.sin(train['seconds']) * (2 * np.pi / hour_sec)
     train['hour_cos'] = np.cos(train['seconds']) * (2 * np.pi / hour_sec)
 
-    test['month_sin'] = np.sin(test['seconds']) * (2 * np.pi / month_sec)
-    test['month_cos'] = np.cos(test['seconds']) * (2 * np.pi / month_sec)
-    test['day_sin'] = np.sin(test['seconds']) * (2 * np.pi / day_sec)
-    test['day_cos'] = np.cos(test['seconds']) * (2 * np.pi / day_sec)
-    test['hour_sin'] = np.sin(test['seconds']) * (2 * np.pi / hour_sec)
-    test['hour_cos'] = np.cos(test['seconds']) * (2 * np.pi / hour_sec)
+    anomalies['month_sin'] = np.sin(anomalies['seconds']) * (2 * np.pi / month_sec)
+    anomalies['month_cos'] = np.cos(anomalies['seconds']) * (2 * np.pi / month_sec)
+    anomalies['day_sin'] = np.sin(anomalies['seconds']) * (2 * np.pi / day_sec)
+    anomalies['day_cos'] = np.cos(anomalies['seconds']) * (2 * np.pi / day_sec)
+    anomalies['hour_sin'] = np.sin(anomalies['seconds']) * (2 * np.pi / hour_sec)
+    anomalies['hour_cos'] = np.cos(anomalies['seconds']) * (2 * np.pi / hour_sec)
 ###########################################################################
     # test['month_sin'] = test['seconds'] / month_sec
     # test['month_cos'] = test['seconds'] / month_sec
@@ -70,35 +70,30 @@ def get_train_test_data():
 
     train = train.drop('seconds', axis = 1)
     train = train.drop('timestamp', axis = 1)
-    test = test.drop('seconds', axis = 1)
-    test = test.drop('timestamp', axis = 1)
-    return train, test
+    anomalies = anomalies.drop('seconds', axis = 1)
+    anomalies = anomalies.drop('timestamp', axis = 1)
+    return train, anomalies
 
-def generate_train_test_data():  
+def generate_train_test_anomaly_data():  
     try:
         db = pd.read_csv('Data/train.csv', parse_dates=["timestamp"]) 
     except:
         db = None
     train = db.query('building_id == 107')
     train = train.dropna()
+    #train.to_csv('C:/Users/ecbey/Downloads/data_building_107.csv')  
+    #train = train.loc[:895988]
+    #train = train.loc[986188:]
     sample_sec_origin = train.iloc[0]['timestamp'].timestamp()
     
     train['time_sec'] = train['timestamp'].map(lambda t: (t.timestamp() - sample_sec_origin) / 3600 )
     sample_time_sec_end = train.iloc[-1]['time_sec']
     train = train.drop('building_id', axis = 1)
-    test = train.query('anomaly == 1')
+    anomalies = train.query('anomaly == 1')
     train = train[train['anomaly'] == 0]
     train = train.drop('anomaly', axis = 1)
-    test = test.drop('anomaly', axis = 1)
+    anomalies = anomalies.drop('anomaly', axis = 1)
     #train.to_csv('C:/Users/ecbey/Downloads/train_building_107.csv')  
-    # sec_origin_row = train.iloc[1:1]
-    # sec_origin_ser = sec_origin_row['timestamp']
-    #print(train.columns.tolist())
-
-    #train_sec_origin = train.iloc[0]['timestamp'].timestamp()
-    #test_sec_origin = test.iloc[0]['timestamp'].timestamp()
-    #train['time_sec'] = train['timestamp'].map(lambda t: (t.timestamp() - sample_sec_origin) / 3600 )
-    #test['time_sec'] = test['timestamp'].map(lambda t: (t.timestamp() - sample_sec_origin ) / 3600)
     hour_sec = 60 * 60
     day_sec = 24 * hour_sec
     month_sec = 30.4167 * day_sec
@@ -126,11 +121,13 @@ def generate_train_test_data():
 #  TRANSF:  e^x^3  ==> e^(output^3)
     
     output_end = 1.3
+    #output_end = 1.5
     output_start = 0.2 
+    tranf = 0.0
     for index, row in train.iterrows():     
         output = output_start + ((output_end -output_start ) / (sample_time_sec_end - 0.0001)) * (float(row['time_sec']) - 0.0001)
         out_inv = output_end - (output -output_start)  
-        tranf = np.e ** (float(-out_inv)**3)
+        tranf = (np.e ** (float(-out_inv)**3))/5 #5 is to diminish the importance of this wheight
         train.loc[index,'year_quarter_1'] = row.year_quarter_1 * tranf
         train.loc[index,'year_quarter_2'] = row.year_quarter_2 * tranf
         train.loc[index,'year_quarter_3'] = row.year_quarter_3 * tranf
@@ -144,11 +141,11 @@ def generate_train_test_data():
  
     #train.to_csv('C:/Users/ecbey/Downloads/train_building_107.csv')  
 
-    #train = train.drop('seconds', axis = 1)
+    
     train = train.drop('timestamp', axis = 1)
     #train.to_csv('C:/Users/ecbey/Downloads/train_building_107.csv') 
-    #test = test.drop('seconds', axis = 1)
-    test = test.drop('timestamp', axis = 1)
-
-    return train, test
+   
+    anomalies = anomalies.drop('timestamp', axis = 1)
+    
+    return train, anomalies
     
