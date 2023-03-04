@@ -37,12 +37,22 @@ def train_test(train, test, test_with_ave, train_with_ave) :
     data_loader = DataLoader(train_split, batch_size=BATCH_SIZE, shuffle=True)
     data_loader_ave = DataLoader(train_with_ave_tensor, batch_size=BATCH_SIZE, shuffle=True)
     number_of_features = int(train_split.X_train.size(dim=1))
-    # create the model for the autoencoder
 
+    # create the model for the autoencoder
     model = autoencoder(epochs = 70, batchSize = BATCH_SIZE, number_of_features = number_of_features, layer_reduction_factor = LAYER_REDUCTION_FACTOR,  seed = seed)
     max_training_loss, train_ave = model.train_only(data_loader, MAX_TRAINING_LOSS_VAR)
     compare_vals = model.execute_evaluate(test_with_ave_tensor, test, max_training_loss, test.index, scaler)
     error = calc_error (compare_vals)
+
+    df_compare_vals = pd.DataFrame(compare_vals, columns=['original', 'generated'])
+    fig1 = plt.figure()
+    plt.plot(test["time_sec"], df_compare_vals["original"])
+    plt.plot(test["time_sec"], df_compare_vals["generated"])
+    # #ax1.plot(test_set["time_sec"], test_set["meter_reading"], test_with_ave["meter_reading"])
+    plt.legend()
+    plt.show()
+
+
     model.optimizer.param_groups[0]['lr'] = 1e-3
     max_training_loss, train_ave = model.train_only_with_denoising_prediction(data_loader_ave, MAX_TRAINING_LOSS_VAR,BATCH_SIZE)
     compare_vals = model.execute_evaluate(test_with_ave_tensor, test, max_training_loss, test.index, scaler)
