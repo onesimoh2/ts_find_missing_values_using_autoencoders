@@ -17,7 +17,7 @@ def train_test(train, test, test_with_ave, train_with_ave) :
     LAYER_REDUCTION_FACTOR = 1.5 #reduce half of the input variables in the latent space 
     BATCH_SIZE = int(len(train)/100) 
     #COLUMN_NAMES = ['meter_reading', 'month_sin', 'month_cos', 'day_sin', 'day_cos', 'hour_sin', 'hour_cos']
-    COLUMN_NAMES = ['meter_reading','year_quarter_1','year_quarter_2','year_quarter_3','year_quarter_4','day_holliday',	'day_midnight',	'day_morning','day_afternoon', 'day_night']
+    COLUMN_NAMES = ['meter_reading','year_quarter_1','year_quarter_2','year_quarter_3','year_quarter_4','day_holiday',	'day_midnight',	'day_morning','day_afternoon', 'day_night']
     PREDICTED_COLUMNS = ['meter_reading']
     DATE_COLUMN_NAME = ''
         # defining the random seed
@@ -48,7 +48,6 @@ def train_test(train, test, test_with_ave, train_with_ave) :
     fig1 = plt.figure()
     plt.plot(test["time_sec"], df_compare_vals["original"])
     plt.plot(test["time_sec"], df_compare_vals["generated"])
-    # #ax1.plot(test_set["time_sec"], test_set["meter_reading"], test_with_ave["meter_reading"])
     plt.legend()
     plt.show()
 
@@ -66,17 +65,18 @@ def train_test(train, test, test_with_ave, train_with_ave) :
     compare_vals = model.execute_evaluate(test_with_ave_tensor, test, max_training_loss, test.index, scaler)
     error = calc_error (compare_vals)
 
-######################## FIND MISSING POINTS ###################
+    ######################## FIND MISSING POINTS ###################
     
     for index, row in train.iterrows(): 
         row_next = train.iloc[index+1,:]
         date1 = row['timestamp']
         date2 = row_next['timestamp']
-######################## END MISSING POINTS ####################  
+   
+ 
+ 
 # ####################FIND ERROR MEAN ###########################
 def calc_error (test_pred):
     nparr = np.array(test_pred)
     error = np.subtract(nparr[:, 0], nparr[:, 1])
     mean_squared_error = np.mean(np.square(error))
     return mean_squared_error
-# ############################################################# 

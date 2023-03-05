@@ -4,76 +4,7 @@ from datetime import date, datetime
 from sklearn.model_selection import train_test_split
 
 
-def get_train_test_data():  
-    try:
-        db = pd.read_csv('Data/train.csv', parse_dates=["timestamp"]) 
-    except:
-        db = None
-    train = db.query('building_id == 107')
-    train = train.dropna()
-   # del train['building_id']
-    train = train.drop('building_id', axis = 1)
-    anomalies = train.query('anomaly == 1')
-    train = train[train['anomaly'] == 0]
-    train = train.drop('anomaly', axis = 1)
-    anomalies = anomalies.drop('anomaly', axis = 1)
-    #train.to_csv('C:/Users/ecbey/Downloads/train_building_107.csv')  
-    # sec_origin_row = train.iloc[1:1]
-    # sec_origin_ser = sec_origin_row['timestamp']
-    #print(train.columns.tolist())
-    train_sec_origin = train.iloc[0]['timestamp'].timestamp()
-    anomalies_sec_origin = anomalies.iloc[0]['timestamp'].timestamp()
-    train['seconds'] = train['timestamp'].map(lambda t: t.timestamp() - train_sec_origin )
-    anomalies['seconds'] = anomalies['timestamp'].map(lambda t: t.timestamp() - anomalies_sec_origin )
-    hour_sec = 60 * 60
-    day_sec = 24 * hour_sec
-    month_sec = 30.4167 * day_sec
-    
 
-############ THIS IS THE ORIGINAL APPROACH ###########################
-    train['month_sin'] = np.sin(train['seconds']) * (2 * np.pi / month_sec)
-    train['month_cos'] = np.cos(train['seconds']) * (2 * np.pi / month_sec)
-    train['day_sin'] = np.sin(train['seconds']) * (2 * np.pi / day_sec)
-    train['day_cos'] = np.cos(train['seconds']) * (2 * np.pi / day_sec)
-    train['hour_sin'] = np.sin(train['seconds']) * (2 * np.pi / hour_sec)
-    train['hour_cos'] = np.cos(train['seconds']) * (2 * np.pi / hour_sec)
-
-    anomalies['month_sin'] = np.sin(anomalies['seconds']) * (2 * np.pi / month_sec)
-    anomalies['month_cos'] = np.cos(anomalies['seconds']) * (2 * np.pi / month_sec)
-    anomalies['day_sin'] = np.sin(anomalies['seconds']) * (2 * np.pi / day_sec)
-    anomalies['day_cos'] = np.cos(anomalies['seconds']) * (2 * np.pi / day_sec)
-    anomalies['hour_sin'] = np.sin(anomalies['seconds']) * (2 * np.pi / hour_sec)
-    anomalies['hour_cos'] = np.cos(anomalies['seconds']) * (2 * np.pi / hour_sec)
-###########################################################################
-    # test['month_sin'] = test['seconds'] / month_sec
-    # test['month_cos'] = test['seconds'] / month_sec
-    # test['day_sin'] = test['seconds'] / day_sec
-    # test['day_cos'] = test['seconds'] / day_sec
-    # test['hour_sin'] = test['seconds'] / hour_sec
-    # test['hour_cos'] = test['seconds'] / hour_sec
-
-    k = 0
-    #CONSTANT = 10000.0
-    #CONSTANT = float(len(train. index)) there are missing places in the series
-    CONSTANT = 5500.00
-    for index, row in train.iterrows(): 
-        row.month_sin = row.month_sin + np.sin((float(k) / (CONSTANT ** (2*0/6))))
-        row.month_cos = row.month_cos + np.cos((float(k) / (CONSTANT ** (2*1/6))))
-
-        row.day_sin = row.day_sin + np.sin((float(k) / (CONSTANT ** (2*2/6))))
-        row.day_cos = row.day_cos + np.cos((float(k) / (CONSTANT ** (2*3/6))))
-
-        row.hour_sin = row.hour_sin + np.sin((float(k) / (CONSTANT ** (2*4/6))))
-        row.hour_cos = row.hour_cos + np.cos((float(k) / (CONSTANT ** (2*5/6))))
-
-    # for i in range(len(test)):
-    #     a = test[i:'month_sin']
-
-    train = train.drop('seconds', axis = 1)
-    train = train.drop('timestamp', axis = 1)
-    anomalies = anomalies.drop('seconds', axis = 1)
-    anomalies = anomalies.drop('timestamp', axis = 1)
-    return train, anomalies
 
 def generate_train_test_anomaly_data():  
     try:
@@ -88,7 +19,7 @@ def generate_train_test_anomaly_data():
     sample_sec_origin = train.iloc[0]['timestamp'].timestamp()
     
     train['time_sec'] = train['timestamp'].map(lambda t: (t.timestamp() - sample_sec_origin) / 3600 )
-    sample_time_sec_end = train.iloc[-1]['time_sec']
+    sample_time_sec_end = train.iloc[-1]['time_sec'] # the last secuence number
     train = train.drop('building_id', axis = 1)
     anomalies = train.query('anomaly == 1')
     train = train[train['anomaly'] == 0]
@@ -108,7 +39,7 @@ def generate_train_test_anomaly_data():
     train['year_quarter_4'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).month > 9 and (datetime.fromtimestamp(t.timestamp())).month <= 12 else 0.0001 )
 
 #DAY
-    train['day_holliday'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).isoweekday() == 6 or (datetime.fromtimestamp(t.timestamp())).isoweekday() == 6 else 0.0001 )
+    train['day_holiday'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).isoweekday() == 6 or (datetime.fromtimestamp(t.timestamp())).isoweekday() == 6 else 0.0001 )
 
 #HOUR
     train['day_midnight'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).hour >= 0 and (datetime.fromtimestamp(t.timestamp())).hour < 7 else 0.0001 )
@@ -116,24 +47,25 @@ def generate_train_test_anomaly_data():
     train['day_afternoon'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).hour > 12 and (datetime.fromtimestamp(t.timestamp())).hour <= 18 else 0.0001 )
     train['day_night'] = train['timestamp'].map(lambda t: 1 if (datetime.fromtimestamp(t.timestamp())).hour > 18 and (datetime.fromtimestamp(t.timestamp())).hour <= 23 else 0.0001 )
 
-#  output = output_start + ((output_end - output_start) / (input_end - input_start)) * (input - input_start)
-#  output_end = 1.3 output_start = 0.2   1.1
-#  output = 0.2 + (1.1 / (input_end - input_start)) * (input - input_start)
-#  TRANSF:  e^x^3  ==> e^(output^3)
     
     output_end = 1.3
-    #output_end = 1.5
     output_start = 0.2 
     tranf = 0.0
-    for index, row in train.iterrows():     
+    #positional encoding
+    for index, row in train.iterrows():  
+        # output is a number that systematically increases the output_start value   
         output = output_start + ((output_end -output_start ) / (sample_time_sec_end - 0.0001)) * (float(row['time_sec']) - 0.0001)
-        out_inv = output_end - (output -output_start)  
+        # out_inv decreases the output_end in proportion of the increase obtained in output
+        out_inv = output_end - (output -output_start) 
+        #e^(-output^3) This will produce a systematic increase in the tranf variable
         tranf = (np.e ** (float(-out_inv)**3))/5 #5 is to diminish the importance of this wheight
+        #multiplying previously generated values to insert into them a given
+        # positional encoding to each observation
         train.loc[index,'year_quarter_1'] = row.year_quarter_1 * tranf
         train.loc[index,'year_quarter_2'] = row.year_quarter_2 * tranf
         train.loc[index,'year_quarter_3'] = row.year_quarter_3 * tranf
         train.loc[index,'year_quarter_4'] = row.year_quarter_4 * tranf
-        train.loc[index,'day_holliday'] = row.day_holliday  * tranf
+        train.loc[index,'day_holiday'] = row.day_holiday  * tranf
         train.loc[index,'day_midnight'] = row.day_midnight  * tranf
         train.loc[index,'day_morning'] = row.day_morning  * tranf
         train.loc[index,'day_afternoon'] = row.day_afternoon  * tranf
