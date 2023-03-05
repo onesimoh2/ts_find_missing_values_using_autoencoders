@@ -2,12 +2,33 @@
 
 ## ABSTRACT
 
-Autoencoders are widely proposed as a method for detecting anomalies. This project will explore the possibility of training a variational autoencoder with a univariate time series and then submitting new isolated values to the model to detect anomalies. The problem with training an autoencoder with a time series is that the autoencoder must learn more about its trend and seasonality to make accurate predictions. There are several applications using autoencoders and Recurrent Neural Networks (RNN) (1) but they require the input to be a sequence. In contrast, what is often required is to train the autoencoder once, and then feed it with new cases not necessarily in sequence, to determine whether they are anomalies or not. This can be important, for example, when monitoring large amounts of real-time transactions using parallel processing, as transactions are not guaranteed to be processed in the exact time they are produced. 
+Time series missing values are a common problem in many fields such as finance, meteorology, and healthcare. Missing values occur when observations are not recorded or lost during data collection, and this can lead to biased or inaccurate analysis results. To overcome this issue, generating missing values is necessary to complete the dataset and preserve the time series properties.
 
-Using a variation autoencoder has the advantage that the latent space is represented by a distribution rather than as a vector. This is expected to lead to some desired fuzziness in detecting abnormalities, resulting in greater sensitivity in detecting points that deviate from expected behavior. in (10) there is a good introduction to the theory behind variational autoencoders.
+However, generating missing values can be challenging, especially when dealing with time series that exhibit trend and seasonal patterns. Trend is the long-term pattern of a time series, while seasonality is the repeating pattern within a shorter time frame. These properties make it difficult to generate missing values that preserve the underlying patterns of the time series, as the generated values must fit within the overall trend and seasonal fluctuations.
 
-This project is very similar to the one described in repo ts-anomaly-detection-beyond-01, except for the utilization of variational autoencoders instead of a regular one,
+Most common techniques for generating missing values, such as linear interpolation or mean imputation, do not tend to preserve the seasonal fluctuations of a time series. This can lead to biased or inaccurate analysis results, especially in applications where the seasonal component is critical, such as in forecasting or anomaly detection.
 
+To overcome this problem, more advanced techniques such as autoencoders can be used. In this project the this approach is explored. The isea is that by training an autoencoder on an incomplete time series dataset, it can learn to capture the important features of the time series, such as trend and seasonality, and use this knowledge to generate missing values.
+
+## DATA PREPARATION
+
+The data was obtained from a Kaggle contest named Large-scale Energy Anomaly Detection (LEAD) https://www.kaggle.com/competitions/energy-anomaly-detection/overview.
+
+This data is a compilation of each data point of electricity meters from approximately 400 commercial buildings. In this project the univariate time series for building number 107 was used. Following there is a graph of the data.
+
+![image](data/original_serie.png)
+
+The data is compiled hourly and from this the following fields were created:
+- time_sec: it contains a  secuential number built from the 'timestamp' field from which several other fields will be computed. Notice that every time that there is a gap in the secuence is because there are missing values.
+
+- year_quarter_1, year_quarter_2, year_quarter_3, year_quarter_4: This fiels are populated with 1 if the anotation belongs to a specific quarter, otherwise it is assigned the value 0.0001.
+
+- day_midnight, day_morning, day_afternoon, day_night: This fiels are populated with 1 if the anotation belongs to a specific category, otherwise is 0.0001.
+
+- day_holliday: Is assigned to 1 if the timestamp of the observation is in what can be considered a hollyday, otherwise is 0.0001.
+
+
+- 
 
 ## THE CHALANGE OF NOT USING AN RNN
 
