@@ -46,7 +46,7 @@ The original value is in blue and the generated ones are in orange.
 
 As you can see this is not so bad aproximation and when the squared average of the errors it gives the number 260.09. 
 
-## USING AN AUTOENCODER TO TRAIN A MODEL EXPEXTED TO BE BETTER AT APROXIMATING THE TEST DATA SET
+## USING AN AUTOENCODER TO TRAIN A MODEL EXPECTED TO BE BETTER AT APROXIMATING THE TEST DATA SET
 
 All the functions used in this part of the project are in the autoencoder_module.py.
 
