@@ -1,5 +1,3 @@
-# THIS REPO IS UNDER CONSTRUCTION
-
 ## ABSTRACT
 
 Time series missing values are a common problem in many fields such as finance, meteorology, and healthcare. Missing values occur when observations are not recorded or lost during data collection, and this can lead to biased or inaccurate analysis results. To overcome this issue, generating missing values is necessary to complete the dataset and preserve the time series properties.
@@ -48,7 +46,7 @@ The original value is in blue and the generated ones are in orange.
 
 As you can see this is not so bad aproximation and when the squared average of the errors it gives the number 260.09. 
 
-## USING AN AUTOENCODER TO TRAIN A MODEL EXPEXTED TO BE BETTER AT APROXIMATING THE TEST DATA SET
+## USING AN AUTOENCODER TO TRAIN A MODEL EXPECTED TO BE BETTER AT APROXIMATING THE TEST DATA SET
 
 All the functions used in this part of the project are in the autoencoder_module.py.
 
@@ -91,7 +89,7 @@ This part have not being built yet. The logic is simple, parse the time series a
 
 During the project several different approaches was tried, some of the code used in these testing are kept commented because these are options that require more investigation. This will be properly indicated so there is no confusion with the actual code used in the results shown here.
 
-## CONCLSIONS
+## CONCLUSIONS
 
 Generating missing values is necessary to support the rest of the projects, in the other Repos, using the Fourier Transform for detecting anomalies.
 
