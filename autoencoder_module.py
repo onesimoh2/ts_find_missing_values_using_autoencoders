@@ -5,8 +5,6 @@ import torch.nn as nn
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader, Subset
 from torch.nn import functional as F
-from utilities import DateUtils, variance
-from fft_functions import fourier_extrapolation, fourierPrediction
 import matplotlib.pyplot as plt
 
 class FeatureDatasetFromDf(Dataset):

@@ -1,4 +1,4 @@
-from utilities import get_csv_from_blob, DateUtils
+
 import pandas as pd
 import numpy  as np
 from datetime import date, datetime
@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from statistics import mean, median
 from sklearn.preprocessing import MinMaxScaler
-from fft_functions import fourier_extrapolation
+
 from autoencoder_module import FeatureDatasetFromDf, autoencoder
 from torch.utils.data import DataLoader, Subset
 
@@ -67,10 +67,10 @@ def train_test(train, test, test_with_ave, train_with_ave) :
 
     ######################## FIND MISSING POINTS ###################
     
-    for index, row in train.iterrows(): 
-        row_next = train.iloc[index+1,:]
-        date1 = row['timestamp']
-        date2 = row_next['timestamp']
+    # for index, row in train.iterrows(): 
+    #     row_next = train.iloc[index+1,:]
+    #     date1 = row['timestamp']
+    #     date2 = row_next['timestamp']
    
  
  
