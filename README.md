@@ -1,5 +1,3 @@
-# THIS REPO IS UNDER CONSTRUCTION
-
 ## ABSTRACT
 
 Time series missing values are a common problem in many fields such as finance, meteorology, and healthcare. Missing values occur when observations are not recorded or lost during data collection, and this can lead to biased or inaccurate analysis results. To overcome this issue, generating missing values is necessary to complete the dataset and preserve the time series properties.
@@ -91,7 +89,7 @@ This part have not being built yet. The logic is simple, parse the time series a
 
 During the project several different approaches was tried, some of the code used in these testing are kept commented because these are options that require more investigation. This will be properly indicated so there is no confusion with the actual code used in the results shown here.
 
-## CONCLSIONS
+## CONCLUSIONS
 
 Generating missing values is necessary to support the rest of the projects, in the other Repos, using the Fourier Transform for detecting anomalies.
 
