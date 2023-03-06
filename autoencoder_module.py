@@ -78,8 +78,8 @@ class autoencoder(nn.Module):
         super(autoencoder, self).__init__()
 
         bottleneck_node_number = int(number_of_features / layer_reduction_factor)
-        numbers_in_layers = self.halving_numbers(number_of_features, bottleneck_node_number) 
-        numbers_in_layers = [10,10,9,9,8,8,7,7,6,6] #0.0219
+        #numbers_in_layers = self.halving_numbers(number_of_features, bottleneck_node_number) 
+        numbers_in_layers = [10,10,9,9,8,8,7,7,6,6] 
         
         result_pairs = list(zip(numbers_in_layers, numbers_in_layers[1:]))
         reverse_numbers_in_layers = list(reversed(numbers_in_layers))
