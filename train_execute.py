@@ -13,8 +13,8 @@ from torch.utils.data import DataLoader, Subset
 
 
 def train_test(train, test, test_with_ave, train_with_ave) :
-    MAX_TRAINING_LOSS_VAR =  3.0 #number of sigmas from the mean to consider a value is an anomaly
-    LAYER_REDUCTION_FACTOR = 1.5 #reduce half of the input variables in the latent space 
+    #MAX_TRAINING_LOSS_VAR =  3.0 #number of sigmas from the mean to consider a value is an anomaly
+    #LAYER_REDUCTION_FACTOR = 1.5 #reduce half of the input variables in the latent space 
     BATCH_SIZE = int(len(train)/100) 
     #COLUMN_NAMES = ['meter_reading', 'month_sin', 'month_cos', 'day_sin', 'day_cos', 'hour_sin', 'hour_cos']
     COLUMN_NAMES = ['meter_reading','year_quarter_1','year_quarter_2','year_quarter_3','year_quarter_4','day_holiday',	'day_midnight',	'day_morning','day_afternoon', 'day_night']
@@ -39,8 +39,8 @@ def train_test(train, test, test_with_ave, train_with_ave) :
     number_of_features = int(train_split.X_train.size(dim=1))
 
     # create the model for the autoencoder
-    model = autoencoder(epochs = 70, batchSize = BATCH_SIZE, number_of_features = number_of_features, layer_reduction_factor = LAYER_REDUCTION_FACTOR,  seed = seed)
-    max_training_loss, train_ave = model.train_only(data_loader, MAX_TRAINING_LOSS_VAR)
+    model = autoencoder(epochs = 70, batchSize = BATCH_SIZE, number_of_features = number_of_features,  seed = seed)
+    max_training_loss, train_ave = model.train_only(data_loader)
     compare_vals = model.execute_evaluate(test_with_ave_tensor, test, max_training_loss, test.index, scaler)
     error = calc_error (compare_vals)
 
@@ -52,18 +52,18 @@ def train_test(train, test, test_with_ave, train_with_ave) :
     plt.show()
 
 
-    model.optimizer.param_groups[0]['lr'] = 1e-3
-    max_training_loss, train_ave = model.train_only_with_denoising_prediction(data_loader_ave, MAX_TRAINING_LOSS_VAR,BATCH_SIZE)
-    compare_vals = model.execute_evaluate(test_with_ave_tensor, test, max_training_loss, test.index, scaler)
-    error = calc_error (compare_vals)
-    model.optimizer.param_groups[0]['lr'] = 1e-3
-    max_training_loss, train_ave = model.train_only(data_loader, MAX_TRAINING_LOSS_VAR)
-    compare_vals = model.execute_evaluate(test_with_ave_tensor, test, max_training_loss, test.index, scaler)
-    error = calc_error (compare_vals)
-    model.optimizer.param_groups[0]['lr'] = 1e-3
-    max_training_loss, train_ave = model.train_only_with_denoising_prediction(data_loader, MAX_TRAINING_LOSS_VAR,BATCH_SIZE)
-    compare_vals = model.execute_evaluate(test_with_ave_tensor, test, max_training_loss, test.index, scaler)
-    error = calc_error (compare_vals)
+    # model.optimizer.param_groups[0]['lr'] = 1e-3
+    # max_training_loss, train_ave = model.train_only_with_denoising_prediction(data_loader_ave, MAX_TRAINING_LOSS_VAR,BATCH_SIZE)
+    # compare_vals = model.execute_evaluate(test_with_ave_tensor, test, max_training_loss, test.index, scaler)
+    # error = calc_error (compare_vals)
+    # model.optimizer.param_groups[0]['lr'] = 1e-3
+    # max_training_loss, train_ave = model.train_only(data_loader, MAX_TRAINING_LOSS_VAR)
+    # compare_vals = model.execute_evaluate(test_with_ave_tensor, test, max_training_loss, test.index, scaler)
+    # error = calc_error (compare_vals)
+    # model.optimizer.param_groups[0]['lr'] = 1e-3
+    # max_training_loss, train_ave = model.train_only_with_denoising_prediction(data_loader, MAX_TRAINING_LOSS_VAR,BATCH_SIZE)
+    # compare_vals = model.execute_evaluate(test_with_ave_tensor, test, max_training_loss, test.index, scaler)
+    # error = calc_error (compare_vals)
 
     ######################## FIND MISSING POINTS ###################
     
